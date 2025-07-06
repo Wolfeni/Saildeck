@@ -1,6 +1,8 @@
 # Saildeck
 A mod manager for Ship of Harkinian, and a spiritual successor to Shiploader
 
+![Saildeck_logo](https://github.com/user-attachments/assets/187e5820-cc41-46e6-a94a-68127e50c4bc)
+
 Saildeck lets you activate and deactivate mods for Ship of Harkinian.
 It is a spiritual successor to Shiploader (https://gamebanana.com/tools/16326) with support for .otr files and .o2r files.
 
