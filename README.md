@@ -11,4 +11,8 @@ Currently, the V1 only let you manage your mods. In future releases, will be add
 # How to use
 
 First, Saildeck will ask you to choose your Ship of Harkinian folder, then it will effortlessly load mods from the "mods" folder.
-Simply double-click or select the mod and hit the "activate/deactivate" button in order to change the state of a mod.
+Simply double-click or select the mod and hit the "Toggle mod state" button in order to change the state of a mod.
+
+This project has been written in python.
+
+Thank you for reading and have a good day!
