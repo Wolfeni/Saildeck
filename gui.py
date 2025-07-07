@@ -3,18 +3,20 @@ import sys
 import subprocess
 import threading
 import ttkbootstrap as tb
+import time
 from ttkbootstrap.constants import *
 from tkinter import messagebox, PhotoImage
 from PIL import Image, ImageTk
 from mod_manager import load_mods, toggle_mod_state, delete_mod, toggle_mods_in_folder
 from utils import get_mods_folder
+from menubar import init_menubar
 
 class ModManagerGUI(tb.Window):
     def __init__(self, game_dir):
         super().__init__(themename="darkly")
         self.title("Saildeck — Mod manager for Ship of Harkinian")
-        self.geometry("600x750")
-        self.resizable(True, True)
+        self.geometry("600x600")
+        self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         icon_path = os.path.join(os.path.dirname(__file__), "icon", "icon.ico")
@@ -28,17 +30,26 @@ class ModManagerGUI(tb.Window):
             "dash": PhotoImage(file=os.path.join(self.assets_dir, "dash.png")),
         }
 
-        self.root = self
-        self.attributes('-topmost', True)
-        self.after(100, lambda: self.attributes('-topmost', False))
+        # 🔽 Chargement du petit logo pour affichage à droite
+        self.logo_small_img = None
+        logo_path = os.path.join(self.assets_dir, "logo_small.png")
+        if os.path.exists(logo_path):
+            try:
+                pil_image = Image.open(logo_path)
+                pil_image = pil_image.resize((int(32 * pil_image.width / pil_image.height), 32), Image.LANCZOS)
+                self.logo_small_img = ImageTk.PhotoImage(pil_image)
+            except Exception as e:
+                print(f"[!] Erreur chargement logo_small.png : {e}")
 
         self.tree_images = {}
-
         self.game_dir = game_dir
         self.mods_dir = get_mods_folder(game_dir)
         self.mods = []
 
-        self.after(100, self.create_widgets)
+        self._last_click_time = 0
+        init_menubar(self)
+        self.create_widgets()
+
         self.after(100, self.force_style_reload)
         self.after(100, self.refresh_mod_list)
 
@@ -57,38 +68,73 @@ class ModManagerGUI(tb.Window):
             print(f"[!] Erreur lors du rechargement du thème : {e}")
 
     def create_widgets(self):
-        # === Logo en haut ===
-        logo_path = os.path.join(self.assets_dir, "logo_name.png")
-        if os.path.exists(logo_path):
-            try:
-                pil_image = Image.open(logo_path)
-                pil_image = pil_image.resize((512, int(512 * pil_image.height / pil_image.width)))
-                self.logo_img = ImageTk.PhotoImage(pil_image)
-                logo_label = tb.Label(self, image=self.logo_img)
-                logo_label.pack(pady=(10, 5))
-            except Exception as e:
-                print(f"[!] Erreur chargement logo : {e}")
+        # === Conteneur principal supérieur ===
+        top_container = tb.Frame(self)
+        top_container.pack(side="top", fill="x", padx=10, pady=(5, 0))
 
-        # === Toolbar ===
-        toolbar = tb.Frame(self)
-        toolbar.pack(side="top", fill="x", padx=10, pady=5)
+        # === Ligne du haut avec logo à gauche et Launch game à droite ===
+        topbar = tb.Frame(top_container)
+        topbar.pack(side="top", fill="x")
 
-        tb.Button(toolbar, text="🔄 Rafraîchir", command=self.refresh_mod_list, bootstyle="success").pack(side="left", padx=5)
-        tb.Button(toolbar, text="📁 Ouvrir Mods", command=self.open_mods_folder, bootstyle="success").pack(side="left", padx=5)
-        tb.Button(toolbar, text="🚀 Lancer le jeu", command=self.launch_game, bootstyle="success").pack(side="right", padx=5)
+        # Logo à gauche
+        if self.logo_small_img:
+            tb.Label(topbar, image=self.logo_small_img).pack(side="left", padx=(0, 10))
 
-        # === Treeview ===
+        # Launch game à droite
+        tb.Button(topbar, text="🚀 Launch game", command=self.launch_game, bootstyle="success").pack(side="right", padx=5)
+
+        # === Arbre des mods ===
         self.tree = tb.Treeview(self, show="tree", selectmode="browse", bootstyle="success")
         self.tree.heading("#0", text="Nom")
         self.tree.pack(fill="both", expand=True, padx=10, pady=10)
-        self.tree.bind("<Double-1>", self.on_treeview_double_click)
+        self.tree.bind("<ButtonRelease-1>", self.on_tree_click)
+        self.tree.bind("<Double-1>", self.on_tree_double_click)
+        self._last_item_clicked = None
+        self._last_click_time = 0
 
         # === Bas de fenêtre ===
         bottom = tb.Frame(self)
         bottom.pack(side="bottom", fill="x", pady=10)
 
-        tb.Button(bottom, text="🟢 Activer / ❌ Désactiver", command=self.toggle_selected_mod, bootstyle="warning").pack(side="left", padx=10)
-        tb.Button(bottom, text="🗑️ Supprimer", command=self.delete_selected_mod, bootstyle="danger").pack(side="left", padx=10)
+        tb.Button(bottom, text="⚙️ Toggle state", command=self.toggle_selected_mod, bootstyle="warning").pack(side="left", padx=10)
+        tb.Button(bottom, text="🗑️ Delete", command=self.delete_selected_mod, bootstyle="danger").pack(side="left", padx=10)
+    
+    def on_tree_double_click(self, event):
+        # Empêche Treeview d'ouvrir/fermer les dossiers automatiquement
+        return "break"
+
+    def on_tree_click(self, event):
+        item_id = self.tree.identify_row(event.y)
+        if not item_id:
+            return
+
+        current_time = time.time()
+        DOUBLE_CLICK_DELAY = 0.4  # secondes
+
+        if self._last_item_clicked == item_id and (current_time - self._last_click_time) < DOUBLE_CLICK_DELAY:
+            self._last_item_clicked = None
+            self.handle_tree_toggle(item_id)
+        else:
+            self._last_click_time = current_time
+            self._last_item_clicked = item_id
+
+    def handle_tree_toggle(self, item_id):
+        abs_path = os.path.join(self.mods_dir, item_id)
+
+        if os.path.isdir(abs_path):
+            try:
+                toggle_mods_in_folder(abs_path)
+                self.refresh_mod_list()
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+            return
+
+        if os.path.isfile(abs_path):
+            try:
+                toggle_mod_state(abs_path)
+                self.refresh_mod_list()
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
 
     def get_folder_icon(self, path):
         enabled_exts = {".otr", ".o2r"}
@@ -108,29 +154,9 @@ class ModManagerGUI(tb.Window):
             return self.icons["cross"]
         return ""
 
-    def on_treeview_double_click(self, event):
-        item_id = self.tree.identify_row(event.y)
-        if not item_id:
-            return
-        abs_path = os.path.join(self.mods_dir, item_id)
-
-        if os.path.isdir(abs_path):
-            try:
-                self.tree.item(item_id, open=False)
-                toggle_mods_in_folder(abs_path)
-                self.refresh_mod_list()
-            except Exception as e:
-                messagebox.showerror("Erreur", str(e))
-            return "break"
-
-        self.toggle_selected_mod()
-        return "break"
-
     def refresh_mod_list(self):
+        expanded = self.get_all_expanded_nodes()
         self.tree.delete(*self.tree.get_children())
-        expanded = set()
-        for item in self.tree.get_children():
-            expanded.update(self.get_expanded_nodes(item))
 
         self.mods = load_mods(self.mods_dir)
         self.tree_images = {}
@@ -145,7 +171,12 @@ class ModManagerGUI(tb.Window):
             for i, part in enumerate(parts):
                 full_path = os.path.join(full_path, part)
                 is_leaf = (i == len(parts) - 1)
-                node_id = os.path.normpath(os.path.join(*parts[:i + 1]))
+
+                # ✅ Si c’est un fichier (dernier niveau), on garde l’extension dans l’ID
+                if is_leaf:
+                    node_id = os.path.normpath(rel_path)
+                else:
+                    node_id = os.path.normpath(os.path.join(*parts[:i + 1]))
 
                 if node_id not in node_map:
                     if is_leaf:
@@ -176,13 +207,20 @@ class ModManagerGUI(tb.Window):
             if self.tree.exists(iid):
                 self.tree.item(iid, open=True)
 
-    def get_expanded_nodes(self, node):
-        result = set()
-        if self.tree.item(node, "open"):
-            result.add(node)
-            for child in self.tree.get_children(node):
-                result.update(self.get_expanded_nodes(child))
-        return result
+
+    def get_all_expanded_nodes(self):
+        def recurse(node):
+            result = set()
+            if self.tree.item(node, "open"):
+                result.add(node)
+                for child in self.tree.get_children(node):
+                    result.update(recurse(child))
+            return result
+
+        all_expanded = set()
+        for child in self.tree.get_children():
+            all_expanded.update(recurse(child))
+        return all_expanded
 
     def get_selected_mod(self):
         selection = self.tree.selection()
@@ -191,7 +229,6 @@ class ModManagerGUI(tb.Window):
         node_id = selection[0]
         base_path = os.path.join(self.mods_dir, node_id)
 
-        # Recherche l'extension existante
         for ext in [".otr", ".o2r", ".disabled", ".di2abled"]:
             full_path = base_path + ext
             if os.path.isfile(full_path):
@@ -201,7 +238,7 @@ class ModManagerGUI(tb.Window):
     def toggle_selected_mod(self):
         selection = self.tree.selection()
         if not selection:
-            messagebox.showwarning("Aucun mod sélectionné", "Sélectionnez un mod ou un dossier.")
+            messagebox.showwarning("No mod selected", "Select a mod or a folder.")
             return
 
         node_id = selection[0]
@@ -209,22 +246,20 @@ class ModManagerGUI(tb.Window):
 
         try:
             if os.path.isdir(abs_path):
-                # On applique le changement à tous les mods du dossier sélectionné
                 toggle_mods_in_folder(abs_path)
             else:
-                # On bascule l'état du fichier individuel
                 toggle_mod_state(abs_path)
         except Exception as e:
-            messagebox.showerror("Erreur", f"Impossible de changer l'état du mod :\n{e}")
+            messagebox.showerror("Error", f"Can't change mod state:\n{e}")
         else:
             self.refresh_mod_list()
 
     def delete_selected_mod(self):
         path = self.get_selected_mod()
         if not path:
-            messagebox.showwarning("Aucun mod sélectionné", "Sélectionnez un mod à supprimer.")
+            messagebox.showwarning("No mod selected", "Select a mod to delete.")
             return
-        confirm = messagebox.askyesno("Confirmation", "Voulez-vous vraiment supprimer ce mod ?")
+        confirm = messagebox.askyesno("Confirm", "Are you sure you want to delete this mod?")
         if confirm:
             delete_mod(path)
             self.refresh_mod_list()
@@ -235,7 +270,7 @@ class ModManagerGUI(tb.Window):
     def launch_game(self):
         exe_path = os.path.join(self.game_dir, "soh.exe")
         if not os.path.isfile(exe_path):
-            messagebox.showerror("Erreur", "Impossible de trouver 'soh.exe'.")
+            messagebox.showerror("Error", "Can't find 'soh.exe'.")
             return
 
         def run_and_quit():
