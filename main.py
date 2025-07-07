@@ -1,8 +1,8 @@
-import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from gui import ModManagerGUI
 from utils import get_game_path, set_game_path, is_valid_game_dir
+from version import __version__
 import time
 
 
@@ -10,7 +10,7 @@ def ask_game_path():
     """Demande à l'utilisateur de sélectionner le dossier du jeu."""
     root = tk.Tk()
     root.withdraw()
-    selected_path = filedialog.askdirectory(title="Sélectionner le dossier du jeu")
+    selected_path = filedialog.askdirectory(title="Select your Ship of Harkinian Folder")
     root.destroy()
 
     if selected_path and is_valid_game_dir(selected_path):
@@ -18,7 +18,7 @@ def ask_game_path():
         time.sleep(0.1)
         main()
     else:
-        messagebox.showerror("Erreur", "Dossier invalide. L'application va se fermer.")
+        messagebox.showerror("Error", "Selected folder doesn't caontain 'soh.exe'")
         exit(1)
 
 def main():
