@@ -15,6 +15,12 @@ Currently, the v1.0.1 only let you manage your mods. In future releases, will be
 First, Saildeck will ask you to choose your Ship of Harkinian folder, then it will effortlessly load mods from the "mods" folder.
 Simply double-click or select the mod and hit the "Toggle mod state" button in order to change the state of a mod.
 
+—————————————————————————————————————————————
+
+# TODO list:
+  - Adding support for Gamebanana using their API
+  - Adding a downloader with scrapping
+
 This project has been written in python.
 
 Thank you for reading and have a good day!
