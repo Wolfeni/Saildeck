@@ -120,21 +120,42 @@ class ModManagerGUI(tb.Window):
 
     def handle_tree_toggle(self, item_id):
         abs_path = os.path.join(self.mods_dir, item_id)
+        is_dir = os.path.isdir(abs_path)
+        rel_base = os.path.splitext(item_id)[0] if not is_dir else item_id
+        expanded = self.get_all_expanded_nodes()
 
-        if os.path.isdir(abs_path):
-            try:
+        try:
+            if is_dir:
                 toggle_mods_in_folder(abs_path)
-                self.refresh_mod_list()
-            except Exception as e:
-                messagebox.showerror("Error", str(e))
+            elif os.path.isfile(abs_path):
+                toggle_mod_state(abs_path)
+            else:
+                return
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
             return
 
-        if os.path.isfile(abs_path):
-            try:
-                toggle_mod_state(abs_path)
-                self.refresh_mod_list()
-            except Exception as e:
-                messagebox.showerror("Error", str(e))
+        self.refresh_mod_list()
+
+        # Restaurer les dossiers ouverts
+        for iid in expanded:
+            if self.tree.exists(iid):
+                self.tree.item(iid, open=True)
+
+        # Restaurer la sélection
+        if is_dir:
+            if self.tree.exists(rel_base):
+                self.tree.selection_set(rel_base)
+                self.tree.see(rel_base)
+        else:
+            for mod in self.mods:
+                rel_path = os.path.relpath(mod["path"], self.mods_dir)
+                if os.path.splitext(rel_path)[0] == rel_base:
+                    iid = os.path.normpath(rel_path)
+                    if self.tree.exists(iid):
+                        self.tree.selection_set(iid)
+                        self.tree.see(iid)
+                    break
 
     def get_folder_icon(self, path):
         enabled_exts = {".otr", ".o2r"}
@@ -244,15 +265,42 @@ class ModManagerGUI(tb.Window):
         node_id = selection[0]
         abs_path = os.path.join(self.mods_dir, node_id)
 
+        is_dir = os.path.isdir(abs_path)
+        rel_base = os.path.splitext(node_id)[0] if not is_dir else node_id
+        expanded = self.get_all_expanded_nodes()
+
         try:
-            if os.path.isdir(abs_path):
+            if is_dir:
                 toggle_mods_in_folder(abs_path)
             else:
                 toggle_mod_state(abs_path)
         except Exception as e:
             messagebox.showerror("Error", f"Can't change mod state:\n{e}")
+            return
+
+        self.refresh_mod_list()
+
+        # Restaurer nœuds ouverts
+        for iid in expanded:
+            if self.tree.exists(iid):
+                self.tree.item(iid, open=True)
+
+        # 🔁 Restaurer la sélection
+        if is_dir:
+            # Le dossier est identifié par son chemin relatif brut
+            if self.tree.exists(rel_base):
+                self.tree.selection_set(rel_base)
+                self.tree.see(rel_base)
         else:
-            self.refresh_mod_list()
+            # Rechercher le fichier avec le même "base path" peu importe son extension
+            for mod in self.mods:
+                rel_path = os.path.relpath(mod["path"], self.mods_dir)
+                if os.path.splitext(rel_path)[0] == rel_base:
+                    iid = os.path.normpath(rel_path)
+                    if self.tree.exists(iid):
+                        self.tree.selection_set(iid)
+                        self.tree.see(iid)
+                    break
 
     def delete_selected_mod(self):
         path = self.get_selected_mod()

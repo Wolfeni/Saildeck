@@ -2,7 +2,6 @@ import os
 import webbrowser
 from tkinter import Toplevel, Label, Frame, Button, Canvas
 from PIL import Image, ImageTk
-import ttkbootstrap as tb
 from version import __version__
 
 def show_about_window(parent):
@@ -76,7 +75,7 @@ def show_about_window(parent):
         fg="#bbbbbb",
         bg="#222222"
     )
-    thanks_label.pack(side="left")
+    thanks_label.pack(side="left", padx=(0, 0))
 
     shiploader_link = Label(
         thanks_frame,
@@ -86,7 +85,7 @@ def show_about_window(parent):
         bg="#222222",
         cursor="hand2"
     )
-    shiploader_link.pack(side="left")
+    shiploader_link.pack(side="left", padx=(0, 0))
     shiploader_link.bind("<Button-1>", lambda e: webbrowser.open("https://gamebanana.com/tools/16326"))
 
     # === Bouton Fermer ===
@@ -112,3 +111,17 @@ def show_about_window(parent):
         bg="#222222"
     )
     version_label.place(x=10, y=335)
+
+    # === Logo Blepy en bas à droite ===
+    blepy_logo_path = os.path.join(assets_dir, "blepy_logo.png")
+    if os.path.exists(blepy_logo_path):
+        try:
+            blepy_img = Image.open(blepy_logo_path)
+            blepy_img = blepy_img.resize((50, 50), Image.LANCZOS)  # Petit format
+            blepy_imgtk = ImageTk.PhotoImage(blepy_img)
+
+            blepy_label = Label(win, image=blepy_imgtk, bg="#222222", borderwidth=0)
+            blepy_label.image = blepy_imgtk  # éviter le garbage collector
+            blepy_label.place(x=365, y=305)
+        except Exception as e:
+            print(f"[!] Erreur chargement blepy_logo.png : {e}")
