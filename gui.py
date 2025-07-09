@@ -1,7 +1,4 @@
 import os
-import sys
-import subprocess
-import threading
 import ttkbootstrap as tb
 import time
 from ttkbootstrap.constants import *
@@ -10,6 +7,7 @@ from PIL import Image, ImageTk
 from mod_manager import load_mods, toggle_mod_state, delete_mod, toggle_mods_in_folder
 from utils import get_mods_folder
 from menubar import init_menubar
+from launch import launch_game
 
 class ModManagerGUI(tb.Window):
     def __init__(self, game_dir):
@@ -52,6 +50,12 @@ class ModManagerGUI(tb.Window):
 
         self.after(100, self.force_style_reload)
         self.after(100, self.refresh_mod_list)
+        
+        # Met la fenêtre au premier plan une fois
+        self.lift()
+        self.attributes('-topmost', True)
+        self.after(500, lambda: self.attributes('-topmost', False))
+
 
     def on_close(self):
         self.destroy()
@@ -316,17 +320,14 @@ class ModManagerGUI(tb.Window):
         os.startfile(self.mods_dir)
 
     def launch_game(self):
-        exe_path = os.path.join(self.game_dir, "soh.exe")
-        if not os.path.isfile(exe_path):
-            messagebox.showerror("Error", "Can't find 'soh.exe'.")
-            return
-
-        def run_and_quit():
-            subprocess.Popen(exe_path, cwd=self.game_dir, close_fds=True)
-            self.destroy()
-            sys.exit(0)
-
-        threading.Thread(target=run_and_quit, daemon=True).start()
+        try:
+            mods_path = os.path.join(self.game_dir, "mods")
+            launch_game(self.game_dir, mods_path)
+            self.destroy()  # Ferme la fenêtre après lancement
+        except FileNotFoundError as e:
+            messagebox.showerror("Error", str(e))
+        except Exception as e:
+            messagebox.showerror("Unexpected Error", str(e))
 
 def launch_gui(game_dir):
     app = ModManagerGUI(game_dir)

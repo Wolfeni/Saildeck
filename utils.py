@@ -78,3 +78,10 @@ def set_game_path(path: str):
     settings = load_settings()
     settings["game_path"] = path
     save_settings(settings)
+    
+def init_settings_file():
+    """
+    Crée le fichier saildeck.data s’il n’existe pas.
+    """
+    if not os.path.isfile(SETTINGS_FILE):
+        write_json(SETTINGS_FILE, {})
