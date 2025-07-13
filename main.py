@@ -7,6 +7,7 @@ import time
 import tkinter as tk
 from tkinter import filedialog
 
+
 def ask_game_path():
     root = tk.Tk()
     root.withdraw()  # Ne pas afficher la fenêtre principale
@@ -20,7 +21,6 @@ def ask_game_path():
     else:
         print("❌ Selected folder doesn't contain 'soh.exe'.")
         sys.exit(1)
-
 
 def main():
     init_settings_file()

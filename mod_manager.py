@@ -27,6 +27,23 @@ def delete_mod(mod_path: str):
         os.remove(mod_path)
 
 
+def set_mod_enabled(mod_path: str, enable: bool):
+    """
+    Force l'état du mod (activé ou désactivé) selon `enable`.
+    """
+    if enable:
+        if mod_path.endswith(".disabled") or mod_path.endswith(".di2abled"):
+            new_ext = ".otr" if mod_path.endswith(".disabled") else ".o2r"
+            new_path = os.path.splitext(mod_path)[0] + new_ext
+            os.rename(mod_path, new_path)
+    else:
+        if mod_path.endswith(".otr"):
+            os.rename(mod_path, os.path.splitext(mod_path)[0] + ".disabled")
+        elif mod_path.endswith(".o2r"):
+            os.rename(mod_path, os.path.splitext(mod_path)[0] + ".di2abled")
+
+
+
 def load_mods(mods_dir: str) -> list:
     mods = []
     files = list_mod_files(mods_dir)
