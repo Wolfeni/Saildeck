@@ -54,6 +54,35 @@ def find_exe_asset(data):
     return None, None, None
 
 
+def download_file_if_needed(url, dest_path, expected_size):
+    print(f"[↓] Download URL: {url}")
+    print(f"[📁] Destination: {dest_path}")
+    print(f"[🔍] Expected size: {expected_size} bytes")
+
+    if os.path.exists(dest_path):
+        local_size = os.path.getsize(dest_path)
+        if local_size == expected_size:
+            print("[✓] File is already complete. Skipping download.")
+            return
+        else:
+            print("[!] File is incomplete. Re-downloading.")
+
+    headers = {'User-Agent': 'Saildeck-Updater'}
+    with requests.get(url, headers=headers, stream=True) as r:
+        print(f"[↪] HTTP status: {r.status_code} {r.reason}")
+        r.raise_for_status()
+        with open(dest_path, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+    print("[✓] Download complete")
+
+
+def launch_new_executable(new_exe_path):
+    # Lance simplement le nouvel exécutable sans tenter de supprimer l'ancien
+    os.startfile(new_exe_path)
+    sys.exit(0)
+
+
 def prompt_and_update_if_needed(parent=None):
     settings = read_settings()
     if settings.get("skip_update", False):
@@ -89,32 +118,8 @@ def prompt_and_update_if_needed(parent=None):
 
         download_file_if_needed(url, exe_path, size)
 
-        print(f"[🚀] Launching: {exe_path}")
-        os.startfile(exe_path)
-        sys.exit(0)
+        print(f"[🚀] Launching new version: {exe_path}")
+        launch_new_executable(exe_path)
 
     except Exception as e:
         messagebox.showerror("Update Failed", f"Failed to download or launch update:\n{e}")
-
-
-def download_file_if_needed(url, dest_path, expected_size):
-    print(f"[↓] Download URL: {url}")
-    print(f"[📁] Destination: {dest_path}")
-    print(f"[🔍] Expected size: {expected_size} bytes")
-
-    if os.path.exists(dest_path):
-        local_size = os.path.getsize(dest_path)
-        if local_size == expected_size:
-            print("[✓] File is already complete. Skipping download.")
-            return
-        else:
-            print("[!] File is incomplete. Re-downloading.")
-
-    headers = {'User-Agent': 'Saildeck-Updater'}
-    with requests.get(url, headers=headers, stream=True) as r:
-        print(f"[↪] HTTP status: {r.status_code} {r.reason}")
-        r.raise_for_status()
-        with open(dest_path, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-    print("[✓] Download complete")

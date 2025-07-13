@@ -1,4 +1,5 @@
 import os
+import sys
 import ttkbootstrap as tb
 import time
 from ttkbootstrap.constants import *
@@ -11,6 +12,18 @@ from launch import launch_game
 from download.downloader_window import open_downloader_window
 from save_modpacks import save_modpack, list_modpacks, load_modpack
 from delete import delete_mod
+
+if sys.platform == "win32":
+    import ctypes
+    try:
+        # DPI awareness SYSTEM_AWARE : l'app gère elle-même le scaling
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        try:
+            # fallback plus simple (pour Windows plus anciens)
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
 
 def normalize_path(path):
     # Normalise le chemin Windows, remplace les slashes par backslashes
